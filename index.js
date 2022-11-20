@@ -43,17 +43,18 @@ io.on('connection', (socket) => {
             io.to(newUser.userId).emit('getMessage', contentMessage);
         }
     });
-    socket.on('sendMessChange', ({ receiverId, contentMessage }) => {
+    socket.on('removeMess', ({ receiverId, idMess }) => {
         const user = getUserSocket(socketUsers, receiverId);
-        console.log(contentMessage);
+
+        console.log(idMess);
         if (!!user) {
             socket.join(user.userId);
-            io.to(user.userId).emit('getMessChange', contentMessage);
+            io.to(user.userId).emit('getMessRemoved', idMess);
         } else {
             addUserSocket(socketUsers, receiverId, socket.id);
             const newUser = getUserSocket(socketUsers, receiverId);
             socket.join(newUser.userId);
-            io.to(newUser.userId).emit('getMessChange', contentMessage);
+            io.to(newUser.userId).emit('getMessRemoved', receiverId);
         }
     });
     // state chat
