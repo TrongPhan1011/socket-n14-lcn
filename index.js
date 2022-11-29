@@ -8,6 +8,7 @@ const io = require('socket.io')(8900, {
 });
 
 var socketUsers = [];
+var listCall = [];
 
 io.on('connection', (socket) => {
     // reconnect
@@ -20,6 +21,7 @@ io.on('connection', (socket) => {
     socket.on('addUserSocket', (userId) => {
         console.log('A User connected');
         socketUsers = addUserSocket(socketUsers, userId, socket.id);
+
         io.emit('getUsersSocket', socketUsers);
     });
 
@@ -46,7 +48,6 @@ io.on('connection', (socket) => {
     socket.on('removeMess', ({ receiverId, idMess }) => {
         const user = getUserSocket(socketUsers, receiverId);
 
-        console.log(idMess);
         if (!!user) {
             socket.join(user.userId);
             io.to(user.userId).emit('getMessRemoved', idMess);
@@ -54,9 +55,36 @@ io.on('connection', (socket) => {
             addUserSocket(socketUsers, receiverId, socket.id);
             const newUser = getUserSocket(socketUsers, receiverId);
             socket.join(newUser.userId);
-            io.to(newUser.userId).emit('getMessRemoved', receiverId);
+            io.to(newUser.userId).emit('getMessRemoved', idMess);
         }
     });
+    socket.on('removeAllChat', ({ receiverId, idChat }) => {
+        const user = getUserSocket(socketUsers, receiverId);
+
+        if (!!user) {
+            socket.join(user.userId);
+            io.to(user.userId).emit('getChatRemoved', idChat);
+        } else {
+            addUserSocket(socketUsers, receiverId, socket.id);
+            const newUser = getUserSocket(socketUsers, receiverId);
+            socket.join(newUser.userId);
+            io.to(newUser.userId).emit('getChatRemoved', idChat);
+        }
+    });
+    socket.on('sendReactMess', ({ receiverId, contentMessage }) => {
+        const user = getUserSocket(socketUsers, receiverId);
+
+        if (!!user) {
+            socket.join(user.userId);
+            io.to(user.userId).emit('getReactMess', contentMessage);
+        } else {
+            addUserSocket(socketUsers, receiverId, socket.id);
+            const newUser = getUserSocket(socketUsers, receiverId);
+            socket.join(newUser.userId);
+            io.to(newUser.userId).emit('getReactMess', contentMessage);
+        }
+    });
+
     // state chat
     socket.on('createChat', (idChat) => {
         socket.join(idChat);
@@ -64,27 +92,29 @@ io.on('connection', (socket) => {
     });
 
     // call
-    socket.emit('me', socket.id);
-    socket.on('userConnect', (data) => {
-        socket.join(data.idJoin);
+    socket.on('sendSignalCall', ({ receiverId, data }) => {
+        const user = getUserSocket(socketUsers, receiverId);
+
+        if (!!user) {
+            io.to(user.userId).emit('getCallSignal', data);
+        } else {
+            addUserSocket(socketUsers, receiverId, socket.id);
+            const newUser = getUserSocket(socketUsers, receiverId);
+            socket.join(newUser.userId);
+
+            io.to(newUser.userId).emit('getCallSignal', data);
+        }
     });
+    socket.on('sendIdCall', ({ receiverId, peerId }) => {
+        const user = getUserSocket(socketUsers, receiverId);
 
-    socket.on('callUser', (data) => {
-        // userToCall: id of Friend
-
-        socket.join(data.userToCall);
-
-        io.to(data.userToCall).emit('callUser', {
-            signal: data.signalData,
-            from: data.from,
-            to: data.userToCall,
-            name: data.name,
-        });
-    });
-
-    socket.on('answerCall', (data) => {
-        console.log(data.signal);
-        socket.join(data.to);
-        io.to(data.to).emit('callAccepted', data.signal);
+        if (!!user) {
+            io.to(user.userId).emit('getPeerId', peerId);
+        } else {
+            addUserSocket(socketUsers, receiverId, socket.id);
+            const newUser = getUserSocket(socketUsers, receiverId);
+            socket.join(newUser.userId);
+            io.to(newUser.userId).emit('getPeerId', peerId);
+        }
     });
 });
